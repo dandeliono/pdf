@@ -1,7 +1,6 @@
 import io
 import logging
-import math
-from typing import Dict, Set
+from typing import List, Optional
 
 import fitz  # type: ignore
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -12,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="PDF Background Watermark Remover", version="2.0.0")
+app = FastAPI(title="PDF Watermark Remover", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,13 +21,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def _normalise_keywords(keywords: Optional[str]) -> List[str]:
+    """Normalise a comma separated keyword string into a list."""
+    if not keywords:
+        return ["watermark", "confidential", "draft"]
+
+    cleaned: List[str] = []
+    for part in keywords.split(","):
+        keyword = part.strip().lower()
+        if keyword:
+            cleaned.append(keyword)
+    return cleaned or ["watermark", "confidential", "draft"]
+
+
 @app.post("/api/remove-watermark")
 async def remove_watermark(
     file: UploadFile = File(...),
-    coverage_ratio: float = Form(0.5),
-    page_ratio: float = Form(0.8),
+    keywords: Optional[str] = Form(None),
 ):
-    """Remove repeated background watermarks from a PDF file."""
+    """Remove watermarks that match supplied keywords from a PDF file."""
     if file.content_type not in {"application/pdf", "application/x-pdf"}:
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
@@ -36,18 +48,11 @@ async def remove_watermark(
     if not data:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
-    _ensure_ratio(coverage_ratio, "coverage_ratio")
-    _ensure_ratio(page_ratio, "page_ratio")
-    logger.info(
-        "Removing background watermarks using coverage_ratio=%s, page_ratio=%s",
-        coverage_ratio,
-        page_ratio,
-    )
+    keyword_list = _normalise_keywords(keywords)
+    logger.info("Removing watermarks using keywords: %s", keyword_list)
 
     try:
-        cleaned_pdf = _remove_watermark_bytes(data, coverage_ratio, page_ratio)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        cleaned_pdf = _remove_watermark_bytes(data, keyword_list)
     except Exception as exc:  # pragma: no cover - logged and reported
         logger.exception("Failed to remove watermark")
         raise HTTPException(status_code=500, detail="Failed to process PDF") from exc
@@ -64,82 +69,56 @@ def health_check():
 app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
 
 
-def _remove_watermark_bytes(data: bytes, coverage_ratio: float, page_ratio: float) -> bytes:
+def _remove_watermark_bytes(data: bytes, keywords: List[str]) -> bytes:
     doc = fitz.open(stream=data, filetype="pdf")
 
-    if doc.page_count == 0:
-        doc.close()
-        raise ValueError("The uploaded PDF contains no pages")
+    keyword_set = {k.lower() for k in keywords}
+    annotations_removed_total = 0
+    redactions_applied_total = 0
 
-    background_xrefs = _identify_background_images(doc, coverage_ratio, page_ratio)
-    logger.info("Identified %s background image candidates", len(background_xrefs))
-
-    pages_cleaned = 0
     for page in doc:
-        removed = False
-        for xref in background_xrefs:
-            if page.get_image_rects(xref):
-                page.delete_image(xref)
-                removed = True
-        if removed:
-            page.clean_contents()
-            pages_cleaned += 1
+        # Remove annotations that contain keywords
+        annotations = page.annots()
+        if annotations:
+            to_delete = []
+            for annot in annotations:
+                contents = (annot.info or {}).get("content", "")
+                if any(keyword in contents.lower() for keyword in keyword_set):
+                    to_delete.append(annot)
+            for annot in to_delete:
+                annotations_removed_total += 1
+                page.delete_annot(annot)
+
+        text_dict = page.get_text("dict")
+        page_redactions = 0
+        for block in text_dict.get("blocks", []):
+            if block.get("type") != 0:
+                continue
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    text = span.get("text", "")
+                    if not text:
+                        continue
+                    lowered = text.lower()
+                    if any(keyword in lowered for keyword in keyword_set):
+                        rect = fitz.Rect(span["bbox"])
+                        page.add_redact_annot(rect, fill=(1, 1, 1))
+                        page_redactions += 1
+
+        if page_redactions:
+            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+            redactions_applied_total += page_redactions
 
     logger.info(
-        "Background watermark removal completed. Pages cleaned: %s", pages_cleaned
+        "Watermark removal completed. %s annotations removed, %s redactions applied",
+        annotations_removed_total,
+        redactions_applied_total,
     )
 
     output = io.BytesIO()
-    doc.save(output, incremental=False, deflate=True, garbage=4)
+    doc.save(output, incremental=False, deflate=True)
     doc.close()
     return output.getvalue()
-
-
-def _identify_background_images(
-    doc: "fitz.Document", coverage_ratio: float, page_ratio: float
-) -> Set[int]:
-    """Identify image xrefs that match the background watermark pattern."""
-
-    num_pages = len(doc)
-    min_pages_required = max(1, math.ceil(page_ratio * num_pages))
-    usage: Dict[int, Set[int]] = {}
-
-    for page in doc:
-        page_area = abs(page.rect)
-        if page_area == 0:
-            continue
-
-        for image in page.get_images(full=True):
-            xref = image[0]
-            rects = page.get_image_rects(xref)
-            if not rects:
-                continue
-
-            coverage = sum(abs(rect) for rect in rects) / page_area
-            if coverage < coverage_ratio:
-                continue
-
-            pages = usage.setdefault(xref, set())
-            pages.add(page.number)
-
-    background_xrefs = {
-        xref for xref, pages in usage.items() if len(pages) >= min_pages_required
-    }
-
-    logger.info(
-        "Coverage threshold %.0f%%, background images selected: %s",
-        coverage_ratio * 100,
-        background_xrefs,
-    )
-    return background_xrefs
-
-
-def _ensure_ratio(value: float, name: str) -> None:
-    if not (0 < value <= 1):
-        raise HTTPException(
-            status_code=400,
-            detail=f"{name} must be between 0 and 1 (exclusive of 0)",
-        )
 
 
 __all__ = ["app"]

@@ -48,7 +48,7 @@ form {
 }
 
 .file-label,
-.threshold-field {
+.keywords-label {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -56,7 +56,7 @@ form {
 }
 
 input[type="file"],
-input[type="number"] {
+input[type="text"] {
   padding: 0.75rem 1rem;
   border: 2px dashed rgba(79, 70, 229, 0.35);
   border-radius: 0.75rem;
@@ -65,27 +65,10 @@ input[type="number"] {
 }
 
 input[type="file"]:focus,
-input[type="number"]:focus {
+input[type="text"]:focus {
   outline: none;
   border-color: #4f46e5;
   background: rgba(79, 70, 229, 0.1);
-}
-
-.threshold-grid {
-  display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.threshold-field input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.threshold-field small {
-  font-weight: 400;
-  color: rgba(30, 41, 59, 0.65);
-  line-height: 1.4;
 }
 
 button[type="submit"] {
@@ -167,9 +150,5 @@ button[type="submit"][disabled] {
   .container {
     margin-top: -2.5rem;
     padding: 2rem 1.5rem;
-  }
-
-  .threshold-grid {
-    grid-template-columns: 1fr;
   }
 }

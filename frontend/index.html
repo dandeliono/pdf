@@ -7,10 +7,10 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-      <header class="hero">
-        <h1>PDF 水印去除工具</h1>
-        <p>上传 PDF 文件并自动识别重复背景水印进行清理。</p>
-      </header>
+    <header class="hero">
+      <h1>PDF 水印去除工具</h1>
+      <p>上传 PDF 文件并自动去除指定关键字的水印。</p>
+    </header>
 
     <main class="container">
       <form id="watermark-form">
@@ -19,44 +19,17 @@
           <input type="file" id="pdf-file" accept="application/pdf" required />
         </label>
 
-        <div class="threshold-grid">
-          <label class="threshold-field">
-            <span>单页覆盖比例阈值</span>
-            <input
-              type="number"
-              id="coverage-ratio"
-              name="coverage_ratio"
-              min="0.1"
-              max="1"
-              step="0.05"
-              value="0.5"
-              required
-            />
-            <small>取值范围 0-1，表示图片覆盖页面面积的阈值。</small>
-          </label>
-
-          <label class="threshold-field">
-            <span>页面重复比例阈值</span>
-            <input
-              type="number"
-              id="page-ratio"
-              name="page_ratio"
-              min="0.1"
-              max="1"
-              step="0.05"
-              value="0.8"
-              required
-            />
-            <small>取值范围 0-1，表示出现背景图的页面占比。</small>
-          </label>
-        </div>
+        <label class="keywords-label">
+          <span>水印关键字（可选，多个以逗号分隔）</span>
+          <input type="text" id="keywords" placeholder="例如：watermark, confidential" />
+        </label>
 
         <button type="submit" id="submit-btn">开始去除</button>
       </form>
 
       <section id="result" class="hidden">
         <h2>处理完成</h2>
-        <p>点击下方按钮下载去除背景水印后的 PDF 文件。</p>
+        <p>点击下方按钮下载去水印后的 PDF 文件。</p>
         <a id="download-link" class="download-btn" href="#" download>下载结果</a>
       </section>
 
@@ -65,8 +38,8 @@
 
     <footer class="footer">
       <p>
-        本工具参考 PyMuPDF 的实践，通过识别占据大部分页面并在多页重复出现的
-        背景图像来移除 PDF 背景水印。对于嵌入在文本中的水印可能无法完全清理。
+        本工具通过检测文本和批注中的关键字并删除匹配项来尝试去除 PDF 水印。
+        对于图像形式的水印可能无法完全移除。
       </p>
     </footer>
 

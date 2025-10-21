@@ -1,7 +1,6 @@
 const form = document.getElementById("watermark-form");
 const fileInput = document.getElementById("pdf-file");
-const coverageInput = document.getElementById("coverage-ratio");
-const pageRatioInput = document.getElementById("page-ratio");
+const keywordsInput = document.getElementById("keywords");
 const submitBtn = document.getElementById("submit-btn");
 const resultSection = document.getElementById("result");
 const downloadLink = document.getElementById("download-link");
@@ -39,21 +38,10 @@ form.addEventListener("submit", async (event) => {
 
   const formData = new FormData();
   formData.append("file", file);
-  const coverageRatio = Number.parseFloat(coverageInput.value);
-  const pageRatio = Number.parseFloat(pageRatioInput.value);
-
-  if (!Number.isFinite(coverageRatio) || coverageRatio <= 0 || coverageRatio > 1) {
-    showStatus("请填写 0-1 之间的覆盖比例阈值", true);
-    return;
+  const keywords = keywordsInput.value.trim();
+  if (keywords.length > 0) {
+    formData.append("keywords", keywords);
   }
-
-  if (!Number.isFinite(pageRatio) || pageRatio <= 0 || pageRatio > 1) {
-    showStatus("请填写 0-1 之间的页面重复阈值", true);
-    return;
-  }
-
-  formData.append("coverage_ratio", coverageRatio.toString());
-  formData.append("page_ratio", pageRatio.toString());
 
   toggleLoadingState(true);
 
@@ -73,7 +61,6 @@ form.addEventListener("submit", async (event) => {
     downloadLink.href = url;
     downloadLink.download = `cleaned-${file.name}`;
     resultSection.classList.remove("hidden");
-    showStatus("背景水印清理完成，可下载结果。", false);
   } catch (error) {
     console.error(error);
     showStatus(error.message || "发生未知错误", true);
