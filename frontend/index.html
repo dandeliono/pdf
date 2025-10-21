@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PDF 水印去除工具</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <h1>PDF 水印去除工具</h1>
+      <p>上传 PDF 文件并自动去除指定关键字的水印。</p>
+    </header>
+
+    <main class="container">
+      <form id="watermark-form">
+        <label class="file-label">
+          <span>选择 PDF 文件</span>
+          <input type="file" id="pdf-file" accept="application/pdf" required />
+        </label>
+
+        <label class="keywords-label">
+          <span>水印关键字（可选，多个以逗号分隔）</span>
+          <input type="text" id="keywords" placeholder="例如：watermark, confidential" />
+        </label>
+
+        <button type="submit" id="submit-btn">开始去除</button>
+      </form>
+
+      <section id="result" class="hidden">
+        <h2>处理完成</h2>
+        <p>点击下方按钮下载去水印后的 PDF 文件。</p>
+        <a id="download-link" class="download-btn" href="#" download>下载结果</a>
+      </section>
+
+      <section id="status" class="hidden status"></section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        本工具通过检测文本和批注中的关键字并删除匹配项来尝试去除 PDF 水印。
+        对于图像形式的水印可能无法完全移除。
+      </p>
+    </footer>
+
+    <script src="/script.js" type="module"></script>
+  </body>
+</html>
