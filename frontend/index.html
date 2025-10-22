@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PDF 水印去除工具</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
     <header class="hero">
@@ -24,8 +24,28 @@
           <input type="text" id="keywords" placeholder="例如：watermark, confidential" />
         </label>
 
+        <label class="mode-label">
+          <span>处理模式</span>
+          <select id="mode">
+            <option value="auto" selected>智能模式（推荐）</option>
+            <option value="vector">矢量模式（仅删除文本/批注）</option>
+            <option value="raster">图像覆盖模式（类似 OCR 覆盖）</option>
+          </select>
+        </label>
+
         <button type="submit" id="submit-btn">开始去除</button>
       </form>
+
+      <section id="progress-section" class="hidden progress-section">
+        <div class="progress-header">
+          <h2>处理进度</h2>
+          <span id="progress-percentage">0%</span>
+        </div>
+        <div class="progress-bar">
+          <div id="progress-bar-fill" class="progress-bar__fill"></div>
+        </div>
+        <ul id="log-list" class="log-list"></ul>
+      </section>
 
       <section id="result" class="hidden">
         <h2>处理完成</h2>
@@ -43,6 +63,6 @@
       </p>
     </footer>
 
-    <script src="/script.js" type="module"></script>
+    <script src="/static/script.js" type="module"></script>
   </body>
 </html>
